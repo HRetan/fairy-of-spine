@@ -3,6 +3,8 @@ import type { Action, Channel, CommandHandler, OutgoingMessage } from "./types.t
 
 const API_BASE = "https://discord.com/api/v10";
 const GATEWAY_URL = "wss://gateway.discord.gg/?v=10&encoding=json";
+/** REST 요청이 매달릴 수 있는 최대 시간. */
+const REQUEST_TIMEOUT_MS = 15_000;
 
 // 게이트웨이 인텐트 비트.
 const INTENT_GUILDS = 1 << 0;
@@ -308,6 +310,7 @@ export class DiscordChannel implements Channel {
           authorization: `Bot ${this.#token}`,
         },
         body: JSON.stringify(body),
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
 
       if (response.ok) return;
@@ -349,6 +352,7 @@ export class DiscordWebhookChannel implements Channel {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ content: renderContent(message) }),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
     if (!response.ok) {
       throw new Error(`디스코드 웹훅 실패: ${response.status} ${await response.text()}`);

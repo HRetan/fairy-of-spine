@@ -52,7 +52,16 @@ for (const setup of setups) {
 }
 saveConfig(config);
 
+/**
+ * 발송이 진행 중인지. 틱은 20초마다 도는데 발송은 그보다 오래 걸릴 수 있다.
+ * (맥이 잠들었다 깨거나 네트워크가 멈칫하면 요청 하나가 한참 매달려 있는다)
+ * 이 빗장이 없으면 그 사이 틱이 "아직 안 보냈네" 하고 한 번 더 보낸다.
+ */
+let sending = false;
+
 async function sendReminder(): Promise<void> {
+  if (sending) return;
+
   const message = reminderMessage();
   const targets = boundChannels(config).filter((id) => channels.has(id));
 
@@ -61,21 +70,28 @@ async function sendReminder(): Promise<void> {
     return;
   }
 
-  await Promise.all(
-    targets.map(async (id) => {
-      const channel = channels.get(id)!;
-      const conversationId = config.bindings[id]!;
-      try {
-        await channel.send(conversationId, message, channel.canReceive ? REMINDER_ACTIONS : undefined);
-      } catch (error) {
-        console.error(`[${id}] 알림 발송 실패:`, error);
-      }
-    }),
-  );
-
+  sending = true;
+  // 보내기 전에 먼저 자리를 차지한다. 발송이 오래 걸려도 다음 틱이 중복으로 보내지 않는다.
+  // 발송에 실패하면 이번 차례를 건너뛰는 셈인데, 두 번 보내는 것보다는 낫다.
   config.lastNotifiedAt = Date.now();
   config.pausedUntil = null;
   saveConfig(config);
+
+  try {
+    await Promise.all(
+      targets.map(async (id) => {
+        const channel = channels.get(id)!;
+        const conversationId = config.bindings[id]!;
+        try {
+          await channel.send(conversationId, message, channel.canReceive ? REMINDER_ACTIONS : undefined);
+        } catch (error) {
+          console.error(`[${id}] 알림 발송 실패:`, error);
+        }
+      }),
+    );
+  } finally {
+    sending = false;
+  }
 }
 
 const deps = {

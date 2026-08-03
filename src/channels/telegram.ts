@@ -3,6 +3,8 @@ import type { Action, Channel, CommandHandler, OutgoingMessage } from "./types.t
 
 const API_BASE = "https://api.telegram.org";
 const LONG_POLL_SECONDS = 25;
+/** 롱폴링이 아닌 요청이 매달릴 수 있는 최대 시간. */
+const REQUEST_TIMEOUT_MS = 15_000;
 
 type TelegramUpdate = {
   update_id: number;
@@ -150,11 +152,13 @@ export class TelegramChannel implements Channel {
   }
 
   async #call<T>(method: string, params: Record<string, unknown>, signal?: AbortSignal): Promise<T> {
+    // 롱폴링은 자기 신호를 들고 오니 그대로 두고, 나머지 요청에는 타임아웃을 건다.
+    // 타임아웃이 없으면 맥이 잠들었다 깨는 사이 요청 하나가 무한정 매달릴 수 있다.
     const response = await fetch(`${API_BASE}/bot${this.#token}/${method}`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(params),
-      ...(signal ? { signal } : {}),
+      signal: signal ?? AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
 
     const payload = (await response.json()) as { ok: boolean; result?: T; description?: string };
