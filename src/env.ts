@@ -38,8 +38,22 @@ export function loadDotEnv(path = join(REPO_ROOT, ".env")): void {
   }
 }
 
-/** 설정 파일과 로그가 사는 곳. 저장소 밖이라 git 에 상태가 섞이지 않는다. */
-export function fairyHome(): string {
+/** 설정과 통계가 사는 곳. 저장소 안 data/ 다. (.gitignore 로 제외돼 있다) */
+export function dataDir(): string {
+  return process.env["FAIRY_DATA_DIR"] ?? join(REPO_ROOT, "data");
+}
+
+/** 로그가 쌓이는 곳. 저장소 안 logs/ 다. (.gitignore 로 제외돼 있다) */
+export function logDir(): string {
+  return process.env["FAIRY_LOG_DIR"] ?? join(REPO_ROOT, "logs");
+}
+
+/**
+ * 예전에 설정이 살던 곳. 지금은 저장소 안 data/ 로 옮겼다.
+ * loadConfig 가 새 위치에 파일이 없을 때만 여기를 들여다보고 한 번 옮겨온다.
+ * 옮김이 끝난 뒤에는 이 함수와 config.ts 의 migrate 를 지워도 된다.
+ */
+export function legacyHome(): string {
   return process.env["FAIRY_HOME"] ?? join(homedir(), ".fairy-of-spine");
 }
 

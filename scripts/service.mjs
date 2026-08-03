@@ -1,7 +1,6 @@
 // npm run service:* 를 OS 에 맞는 스크립트로 넘겨준다.
 // macOS 는 launchd(bash), 윈도우는 작업 스케줄러(PowerShell).
 import { spawn } from "node:child_process";
-import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -16,8 +15,8 @@ if (!["install", "uninstall", "logs"].includes(action ?? "")) {
   process.exit(1);
 }
 
-const fairyHome = process.env.FAIRY_HOME ?? join(homedir(), ".fairy-of-spine");
-const logFile = join(fairyHome, "logs", "fairy.log");
+// 로그는 저장소 안 logs/ 에 쌓인다. src/env.ts 의 logDir() 와 같은 규칙이다.
+const logFile = join(process.env.FAIRY_LOG_DIR ?? join(REPO_DIR, "logs"), "fairy.log");
 
 const command = resolveCommand();
 if (!command) {

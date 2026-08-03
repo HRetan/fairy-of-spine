@@ -2,12 +2,20 @@ import { createChannels } from "./channels/index.ts";
 import type { Action, Channel, ChannelId } from "./channels/types.ts";
 import { handleCommand } from "./commands.ts";
 import { boundChannels, CONFIG_PATH, loadConfig, saveConfig } from "./config.ts";
-import { loadDotEnv } from "./env.ts";
+import { loadDotEnv, logDir } from "./env.ts";
+import { trimLogs } from "./logs.ts";
 import { reminderMessage } from "./messages.ts";
 import { formatWhen, isDue, nextReminderAt } from "./schedule.ts";
 
 /** 알림을 보낼 때가 됐는지 확인하는 주기. 분 단위 정확도면 충분하다. */
 const TICK_MS = 20_000;
+
+/**
+ * 로그 크기를 확인하는 주기(틱 수). 20초 x 90 = 30분.
+ * 시작할 때만 확인하면 부족하다. 폴링이 계속 실패하는 상황에서는
+ * 프로세스가 재시작하지 않은 채로 로그만 불어나기 때문이다.
+ */
+const LOG_CHECK_EVERY = 90;
 
 const REMINDER_ACTIONS: Action[] = [
   { id: "done", label: "✅ 폈어요" },
@@ -15,6 +23,7 @@ const REMINDER_ACTIONS: Action[] = [
 ];
 
 loadDotEnv();
+trimLogs();
 
 const config = loadConfig();
 
@@ -80,7 +89,11 @@ for (const setup of setups) {
   await setup.channel.start((command) => handleCommand(command, deps));
 }
 
+let ticks = 0;
 const tick = setInterval(() => {
+  ticks += 1;
+  if (ticks % LOG_CHECK_EVERY === 0) trimLogs();
+
   const now = new Date();
   if (!isDue(config, now)) return;
   void sendReminder();
@@ -89,6 +102,7 @@ const tick = setInterval(() => {
 const enabledLabels = setups.map((setup) => setup.channel.label).join(", ");
 console.log(`🧚 허리 요정 시작: ${enabledLabels}`);
 console.log(`설정 파일: ${CONFIG_PATH}`);
+console.log(`로그: ${logDir()}`);
 
 const next = nextReminderAt(config, new Date());
 console.log(

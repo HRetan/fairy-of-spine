@@ -1,3 +1,4 @@
+import { createReporter } from "../report.ts";
 import type { Action, Channel, CommandHandler, OutgoingMessage } from "./types.ts";
 
 const API_BASE = "https://api.telegram.org";
@@ -79,6 +80,8 @@ export class TelegramChannel implements Channel {
 
   async #pollLoop(handler: CommandHandler): Promise<void> {
     let backoffMs = 1_000;
+    // 같은 실패가 이어질 때 로그를 매번 남기지 않는다. 409 나 잘못된 토큰이 대표적이다.
+    const reporter = createReporter("telegram");
 
     while (this.#running) {
       try {
@@ -93,6 +96,7 @@ export class TelegramChannel implements Channel {
           this.#pollAbort.signal,
         );
         backoffMs = 1_000;
+        reporter.ok();
 
         for (const update of updates) {
           this.#offset = update.update_id + 1;
@@ -105,7 +109,7 @@ export class TelegramChannel implements Channel {
         }
       } catch (error) {
         if (!this.#running) return;
-        console.error(`[telegram] 폴링 실패, ${Math.round(backoffMs / 1000)}초 뒤 재시도:`, error);
+        reporter.fail(error);
         await sleep(backoffMs);
         backoffMs = Math.min(backoffMs * 2, 60_000);
       }

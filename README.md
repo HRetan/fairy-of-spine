@@ -68,7 +68,8 @@ npm run service:uninstall  # 보내주기 (설정과 기록은 남겨둘게)
 <summary>🍎 <b>macOS 에서 벌어지는 일</b></summary>
 
 `~/Library/LaunchAgents/net.nextlevelstudio.fairy-of-spine.plist` 에 LaunchAgent 로 등록돼.
-`RunAtLoad` + `KeepAlive` 라서 로그인할 때 뜨고, 죽으면 launchd 가 즉시 되살려. 로그는 `tail -f` 로 봐.
+`RunAtLoad` + `KeepAlive` 라서 로그인할 때 뜨고, 죽으면 launchd 가 즉시 되살려.
+로그는 저장소 안 `logs/fairy.log` 와 `logs/fairy.error.log` 로 흘러.
 
 ```bash
 launchctl list | grep fairy                                  # 살아 있나 확인
@@ -87,13 +88,13 @@ launchctl kickstart -k gui/$(id -u)/net.nextlevelstudio.fairy-of-spine   # 다�
 - **5분마다 반복** 트리거 + **중복 실행 무시(IgnoreNew)** 설정으로,
   이미 돌고 있으면 새 인스턴스가 무시되고 죽어 있으면 다음 5분 안에 되살아나
 
-콘솔 창이 뜨지 않도록 `%USERPROFILE%\.fairy-of-spine\` 에 `fairy.cmd`(실행 + 로그 리다이렉션)와
+콘솔 창이 뜨지 않도록 저장소 안 `data\` 에 `fairy.cmd`(실행 + 로그 리다이렉션)와
 `fairy.vbs`(숨김 실행)를 만들어 두고, 스케줄러는 `wscript.exe fairy.vbs` 를 부르게 해뒀어.
 
 ```powershell
 Get-ScheduledTask -TaskName fairy-of-spine          # 살아 있나 확인
 Start-ScheduledTask -TaskName fairy-of-spine        # 다시 깨우기
-Get-Content "$env:USERPROFILE\.fairy-of-spine\logs\fairy.log" -Tail 50 -Wait   # 로그
+Get-Content .\logs\fairy.log -Tail 50 -Wait                    # 로그 (저장소 안)
 ```
 
 `.ps1` 을 직접 실행하면 실행 정책에 막힐 수 있어. `npm run service:install` 은 `-ExecutionPolicy Bypass`
@@ -141,7 +142,8 @@ powershell -ExecutionPolicy Bypass -File scripts\install.ps1
 | `DISCORD_CHANNEL_ID` | | 갈 채널을 미리 정해두고 싶을 때 |
 | `DISCORD_MESSAGE_CONTENT_INTENT` | | 서버 채널에서 네 말을 들으려면 `true` (기본 `false`) |
 | `DISCORD_WEBHOOK_URL` | | 봇 토큰이 없을 때만 써. 말만 하고 듣진 못해 |
-| `FAIRY_HOME` | | 내 짐을 둘 곳. 기본은 `~/.fairy-of-spine` |
+| `FAIRY_DATA_DIR` | | 설정을 둘 곳. 기본은 이 저장소 안 `data/` |
+| `FAIRY_LOG_DIR` | | 로그를 둘 곳. 기본은 이 저장소 안 `logs/` |
 
 △ = 이 둘 중 최소 하나는 있어야 해. 둘 다 주면 **양쪽 모두로** 찾아갈게. 🧚🧚
 
@@ -167,9 +169,22 @@ powershell -ExecutionPolicy Bypass -File scripts\install.ps1
 
 ## 📦 내 짐
 
-설정과 기록은 저장소가 아니라 `~/.fairy-of-spine/config.json` 에 둘게.
+내 짐은 전부 저장소 안에 있어. 둘 다 git 에는 안 올라가. 📂
+
+**설정과 기록**은 `data/config.json`.
 `/interval` 처럼 네가 바꾼 값이 여기 적히고, 내가 다시 깨어나도 기억하고 있어.
 기록은 최근 90일치만 남기고 오래된 건 정리할게. 🧹
+
+> 예전에는 `~/.fairy-of-spine/config.json` 에 뒀었어. 거기 파일이 남아 있으면
+> 처음 깨어날 때 한 번 옮겨오고, 원본은 지우지 않고 그대로 둘게.
+
+**로그**는 `logs/fairy.log` 와 `logs/fairy.error.log`.
+
+로그는 이렇게 관리해:
+
+- 1MB 를 넘으면 뒤쪽 256KB 만 남기고 앞부분을 잘라내. 시작할 때 한 번, 그 뒤로는 30분마다 확인해
+- 같은 오류가 이어질 때는 1, 2, 4, 8… 번째에만 남겨. 하루 1440번 실패해도 11줄이면 끝나고,
+  회복되면 몇 번 만에 돌아왔는지 알려줄게
 
 ## 🗂️ 내가 만들어진 방식
 
@@ -178,8 +193,10 @@ src/
   index.ts            상주 루프. 20초마다 "갈 때가 됐나" 확인
   schedule.ts         타임존·활동시간대·다음에 갈 시각 계산 (순수 함수)
   commands.ts         채널과 상관없는 명령 처리
-  config.ts           ~/.fairy-of-spine/config.json 읽기/쓰기
+  config.ts           data/config.json 읽기/쓰기
   messages.ts         내 대사와 그림 모음
+  logs.ts             로그가 커지면 앞부분을 잘라내기
+  report.ts           같은 오류가 반복될 때 로그 줄이기
   channels/
     types.ts          Channel 인터페이스
     index.ts          환경변수를 보고 갈 수 있는 곳만 준비
@@ -191,7 +208,7 @@ scripts/
   install.ps1         윈도우 - 작업 스케줄러 등록
 ```
 
-앱 자체는 어느 OS 든 똑같이 돌아. Node 만 쓰고 경로도 `path.join` / `os.homedir()` 라서
+앱 자체는 어느 OS 든 똑같이 돌아. Node 만 쓰고 경로도 `path.join` 으로 잡아서
 OS 를 타는 건 상주 등록 부분뿐이야.
 
 내가 갈 곳을 늘리고 싶다면 `Channel` 인터페이스를 구현하고 `channels/index.ts` 에 등록해줘.

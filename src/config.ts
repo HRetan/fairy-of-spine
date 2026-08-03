@@ -1,8 +1,8 @@
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { CHANNEL_IDS, type ChannelId } from "./channels/types.ts";
-import { fairyHome } from "./env.ts";
+import { dataDir, legacyHome } from "./env.ts";
 
 export type Config = {
   /**
@@ -45,12 +45,14 @@ export const DEFAULT_CONFIG: Config = {
   stats: {},
 };
 
-export const CONFIG_PATH = join(fairyHome(), "config.json");
+export const CONFIG_PATH = join(dataDir(), "config.json");
 
 /** 통계를 무한정 쌓지 않도록 최근 N일치만 남긴다. */
 const STATS_RETENTION_DAYS = 90;
 
 export function loadConfig(): Config {
+  migrateFromLegacyHome();
+
   let raw: string;
   try {
     raw = readFileSync(CONFIG_PATH, "utf8");
@@ -79,11 +81,34 @@ export function loadConfig(): Config {
 
 export function saveConfig(config: Config): void {
   pruneStats(config);
-  mkdirSync(fairyHome(), { recursive: true });
+  mkdirSync(dataDir(), { recursive: true });
   // 쓰다가 죽어도 기존 설정이 깨지지 않도록 임시 파일에 쓰고 교체한다.
   const tmp = `${CONFIG_PATH}.tmp`;
   writeFileSync(tmp, `${JSON.stringify(config, null, 2)}\n`, "utf8");
   renameSync(tmp, CONFIG_PATH);
+}
+
+/**
+ * 예전 위치(~/.fairy-of-spine/config.json)에 있던 설정을 저장소 안 data/ 로 한 번 옮긴다.
+ *
+ * 그냥 경로만 바꾸면 채널 연결과 폴링 오프셋이 날아가 /start 를 다시 해야 하고,
+ * 오프셋이 0 으로 돌아가면 오래된 명령을 다시 처리할 수도 있다.
+ * 원본은 지우지 않는다. 옮기다 잘못돼도 되돌릴 수 있어야 한다.
+ */
+function migrateFromLegacyHome(): void {
+  if (existsSync(CONFIG_PATH)) return;
+
+  const legacy = join(legacyHome(), "config.json");
+  if (legacy === CONFIG_PATH || !existsSync(legacy)) return;
+
+  try {
+    mkdirSync(dataDir(), { recursive: true });
+    writeFileSync(CONFIG_PATH, readFileSync(legacy, "utf8"), "utf8");
+    console.log(`[config] 예전 설정을 옮겨왔다: ${legacy} -> ${CONFIG_PATH}`);
+    console.log("[config] 원본은 그대로 뒀다. 잘 도는 걸 확인하면 지워도 된다.");
+  } catch (error) {
+    console.error("[config] 예전 설정을 옮기지 못했다:", error instanceof Error ? error.message : error);
+  }
 }
 
 /** 알림을 보낼 곳이 한 군데라도 묶여 있는지. */

@@ -9,8 +9,9 @@ $ErrorActionPreference = "Stop"
 
 $TaskName  = "fairy-of-spine"
 $RepoDir   = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-$FairyHome = if ($env:FAIRY_HOME) { $env:FAIRY_HOME } else { Join-Path $env:USERPROFILE ".fairy-of-spine" }
-$LogDir    = Join-Path $FairyHome "logs"
+# 설정도 로그도 저장소 안에 둔다.
+$DataDir   = if ($env:FAIRY_DATA_DIR) { $env:FAIRY_DATA_DIR } else { Join-Path $RepoDir "data" }
+$LogDir    = if ($env:FAIRY_LOG_DIR) { $env:FAIRY_LOG_DIR } else { Join-Path $RepoDir "logs" }
 $LogFile   = Join-Path $LogDir "fairy.log"
 
 # ── 준비 확인 ────────────────────────────────────────────────
@@ -28,11 +29,11 @@ if (-not (Test-Path (Join-Path $RepoDir ".env"))) {
   Write-Error ".env 가 없습니다. 먼저 'copy .env.example .env' 후 토큰을 채워주세요."
 }
 
-New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
+New-Item -ItemType Directory -Force -Path $LogDir, $DataDir | Out-Null
 
 # ── 실행 래퍼 생성 ───────────────────────────────────────────
 # 리다이렉션 따옴표를 .cmd 안에 가둬두면 VBS/스케줄러 쪽 인용 지옥을 피할 수 있다.
-$cmdPath = Join-Path $FairyHome "fairy.cmd"
+$cmdPath = Join-Path $DataDir "fairy.cmd"
 @"
 @echo off
 cd /d "$RepoDir"
@@ -42,7 +43,7 @@ cd /d "$RepoDir"
 # 콘솔 창이 뜨지 않게 VBS 로 감싼다. Run 의 세 번째 인자 0 이 "숨김"이다.
 # 사용자명이 한글인 경로(C:\Users\로건\...)도 깨지지 않도록 UTF-16 으로 쓴다.
 # WSH 는 BOM 을 보고 알아서 판별한다.
-$vbsPath = Join-Path $FairyHome "fairy.vbs"
+$vbsPath = Join-Path $DataDir "fairy.vbs"
 @"
 CreateObject("WScript.Shell").Run """$cmdPath""", 0, False
 "@ | Set-Content -Path $vbsPath -Encoding Unicode

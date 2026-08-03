@@ -5,8 +5,8 @@ set -euo pipefail
 
 LABEL="net.nextlevelstudio.fairy-of-spine"
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-FAIRY_HOME="${FAIRY_HOME:-$HOME/.fairy-of-spine}"
-LOG_DIR="$FAIRY_HOME/logs"
+# 설정도 로그도 저장소 안에 둔다.
+LOG_DIR="${FAIRY_LOG_DIR:-$REPO_DIR/logs}"
 PLIST_PATH="$HOME/Library/LaunchAgents/$LABEL.plist"
 TEMPLATE="$REPO_DIR/launchd/$LABEL.plist.template"
 

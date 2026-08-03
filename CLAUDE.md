@@ -75,9 +75,24 @@ Node 24+ 의 네이티브 TypeScript 타입 스트리핑으로 `.ts` 를 직접 
 **아트가 없는 메시지는 `parse_mode` 없이 평문으로 보낸다.** 이스케이프 사고가 날 여지를
 없애려는 의도적인 선택이다. 이 분기를 지우지 말 것.
 
-### 설정이 단일 진실이고, 저장소 밖에 산다
+### 상태는 전부 저장소 안에 있다
 
-`~/.fairy-of-spine/config.json` (`FAIRY_HOME` 으로 변경 가능). 알림 간격·시간대·요일·타임존은
+설정 `data/config.json` (`FAIRY_DATA_DIR`), 로그 `logs/` (`FAIRY_LOG_DIR`). 둘 다 `.gitignore` 로 빠져 있다.
+
+`~/.fairy-of-spine/config.json` 에서 옮겨온 이력이 있다. `config.ts` 의 `migrateFromLegacyHome` 이
+새 위치에 파일이 없을 때만 예전 파일을 복사해온다(원본은 남긴다). 옮김이 끝났다고 판단되면
+그 함수와 `env.ts` 의 `legacyHome` 을 지워도 된다.
+
+앱은 stdout/stderr 로만 찍고 파일은 launchd 나 `fairy.cmd` 가 append 로 연다.
+그래서 `src/logs.ts` 는 회전(rotate)이 아니라 **절단(truncate)** 을 한다 — 파일을 옮기면
+이미 열려 있는 핸들이 옮겨간 쪽을 붙잡아 새 파일이 비어버린다.
+
+반복되는 오류는 `src/report.ts` 의 `createReporter` 로 1, 2, 4, 8… 번째에만 남긴다.
+`fail()` 옆에 **`ok()` 를 꼭 같이 걸어야** 회복 시 카운터가 풀린다.
+
+### 설정이 단일 진실이다
+
+알림 간격·시간대·요일·타임존은
 전부 **채팅 명령으로 런타임에 바뀌고** 즉시 저장된다. 하드코딩된 스케줄은 없다.
 쓰기는 임시 파일 + `rename` 이라 중간에 죽어도 기존 설정이 깨지지 않는다.
 

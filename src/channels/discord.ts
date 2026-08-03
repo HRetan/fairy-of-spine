@@ -1,3 +1,4 @@
+import { createReporter } from "../report.ts";
 import type { Action, Channel, CommandHandler, OutgoingMessage } from "./types.ts";
 
 const API_BASE = "https://discord.com/api/v10";
@@ -54,6 +55,8 @@ export class DiscordChannel implements Channel {
   #running = false;
   #backoffMs = 1_000;
   #handler: CommandHandler | null = null;
+  // 끊김이 반복될 때 같은 경고를 매번 남기지 않는다.
+  #reporter = createReporter("discord");
 
   constructor(options: DiscordOptions) {
     this.#token = options.token;
@@ -134,7 +137,7 @@ export class DiscordChannel implements Channel {
       // 재개 불가능한 코드면 세션을 버리고 새로 신원 확인한다.
       if (event.code >= 4007 && event.code !== 4008) this.#sessionId = null;
 
-      console.warn(`[discord] 연결이 끊겼습니다 (code ${event.code}). ${Math.round(this.#backoffMs / 1000)}초 뒤 재접속.`);
+      this.#reporter.fail(new Error(`연결이 끊겼다 (code ${event.code}). 재접속한다.`));
       this.#scheduleReconnect();
     });
 
@@ -193,6 +196,7 @@ export class DiscordChannel implements Channel {
 
       case OP_HEARTBEAT_ACK:
         this.#backoffMs = 1_000; // 정상 동작 확인됨
+        this.#reporter.ok();
         return;
 
       case OP_RECONNECT:
