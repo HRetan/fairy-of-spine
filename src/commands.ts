@@ -65,15 +65,24 @@ export async function handleCommand(command: IncomingCommand, deps: CommandDeps)
   switch (name) {
     case "start": {
       const wasBound = config.bindings[command.channel] === command.conversationId;
+      const wasEnabled = config.enabled;
+
       config.bindings[command.channel] = command.conversationId;
       config.enabled = true;
       config.pausedUntil = null;
+      // 켤 때는 타이머도 다시 잰다. /resume 과 같은 규칙이다.
+      // 이게 없으면 오래 멈춰뒀다 켰을 때 마지막 발송이 한참 전이라 곧바로 알림이 간다.
+      config.lastNotifiedAt = deps.now().getTime();
       save();
-      await command.reply(
-        wasBound
-          ? `🧚 이미 네 옆에 있어.\n\n${describeStatus(config, deps.now())}`
-          : `${greetingMessage()}\n\n${describeStatus(config, deps.now())}\n\n/help 라고 하면 내가 할 수 있는 걸 알려줄게.`,
-      );
+
+      const opening = !wasBound
+        ? greetingMessage()
+        : wasEnabled
+          ? "🧚 이미 네 옆에 있어."
+          : "다시 갈게. 🧚";
+      const closing = wasBound ? "" : "\n\n/help 라고 하면 내가 할 수 있는 걸 알려줄게.";
+
+      await command.reply(`${opening}\n\n${describeStatus(config, deps.now())}${closing}`);
       return;
     }
 
