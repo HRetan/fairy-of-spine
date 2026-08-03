@@ -1,0 +1,21 @@
+{
+  "name": "fairy-of-spine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "허리 펴라고 잔소리하는 텔레그램 요정",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "start": "node src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "service:install": "bash scripts/install.sh",
+    "service:uninstall": "bash scripts/uninstall.sh",
+    "service:logs": "tail -f \"$HOME/.fairy-of-spine/logs/fairy.log\""
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "typescript": "^5.9.2"
+  }
+}
