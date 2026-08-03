@@ -25,23 +25,23 @@ export type CommandDeps = {
 };
 
 const HELP = [
-  "🧚 허리 요정 사용법",
+  "🧚 나에게 할 수 있는 말",
   "",
-  "/start — 이 대화에 알림을 연결",
-  "/stop — 알림 전체 끄기",
-  "/status — 현재 설정과 다음 알림 시각",
-  "/done — 허리 폈다고 보고 (타이머 리셋)",
-  "/snooze [분] — 잠깐 미루기 (기본 15분)",
-  "/pause [분] — 일시정지 (분을 안 쓰면 무기한)",
-  "/resume — 일시정지 해제",
-  "/interval <분> — 알림 간격 (예: /interval 25)",
-  "/hours <HH:MM-HH:MM> — 활동 시간대 (예: /hours 09:00-18:00)",
-  "/days <매일|평일|주말|월화수목금> — 알림 받을 요일",
-  "/tz <타임존> — 기준 시간대 (예: /tz Asia/Seoul)",
-  "/stats — 최근 기록",
-  "/test — 지금 바로 알림 한 번",
+  "/start — 이 대화로 찾아갈게",
+  "/stop — 조용히 있을게",
+  "/status — 지금 설정과 다음에 갈 시각",
+  "/done — 폈다고 알려줘. 칭찬하고 타이머를 다시 잴게",
+  "/snooze [분] — 잠깐 미뤄줄게 (기본 15분)",
+  "/pause [분] — 쉬어갈게 (분을 안 쓰면 부를 때까지)",
+  "/resume — 다시 찾아갈게",
+  "/interval <분> — 얼마마다 갈지 (예: /interval 25)",
+  "/hours <HH:MM-HH:MM> — 언제부터 언제까지 (예: /hours 09:00-18:00)",
+  "/days <매일|평일|주말|월화수목금> — 어느 요일에 갈지",
+  "/tz <타임존> — 어느 시간대를 기준으로 할지 (예: /tz Asia/Seoul)",
+  "/stats — 네가 몇 번 폈는지",
+  "/test — 지금 당장 한 번 가볼게",
   "",
-  "디스코드에서는 / 대신 ! 도 됩니다 (예: !status).",
+  "디스코드에서는 / 대신 ! 도 알아들어 (예: !status).",
 ].join("\n");
 
 /** 명령 한 건을 처리한다. 명령이 아니면 조용히 무시한다. */
@@ -56,7 +56,7 @@ export async function handleCommand(command: IncomingCommand, deps: CommandDeps)
   const bound = config.bindings[command.channel];
   if (bound === null && name !== "start" && name !== "help") {
     const prefix = command.channel === "discord" ? "!" : "/";
-    await command.reply(`먼저 ${prefix}start 를 보내 이 대화를 알림 대상으로 등록해주세요.`);
+    await command.reply(`먼저 ${prefix}start 라고 말해줘. 그래야 어디로 찾아갈지 알거든.`);
     return;
   }
   // 다른 대화에서 온 명령은 무시한다. 봇이 여러 채널에 있어도 한 곳만 듣는다.
@@ -71,8 +71,8 @@ export async function handleCommand(command: IncomingCommand, deps: CommandDeps)
       save();
       await command.reply(
         wasBound
-          ? `이미 연결돼 있어요.\n\n${describeStatus(config, deps.now())}`
-          : `${greetingMessage()}\n\n${describeStatus(config, deps.now())}\n\n/help 로 명령을 볼 수 있어요.`,
+          ? `이미 네 옆에 있어.\n\n${describeStatus(config, deps.now())}`
+          : `${greetingMessage()}\n\n${describeStatus(config, deps.now())}\n\n/help 라고 하면 내가 할 수 있는 걸 알려줄게.`,
       );
       return;
     }
@@ -84,7 +84,7 @@ export async function handleCommand(command: IncomingCommand, deps: CommandDeps)
     case "stop":
       config.enabled = false;
       save();
-      await command.reply("알림을 껐습니다. 다시 켜려면 /start 를 보내주세요. 💤");
+      await command.reply("알겠어. 조용히 있을게. 다시 부르고 싶으면 /start 라고 말해줘. 💤");
       return;
 
     case "status":
@@ -99,7 +99,7 @@ export async function handleCommand(command: IncomingCommand, deps: CommandDeps)
       save();
 
       const next = nextReminderAt(config, deps.now());
-      const suffix = next ? `\n다음 알림: ${formatWhen(next, config.timezone, deps.now())}` : "";
+      const suffix = next ? `\n다음엔 ${formatWhen(next, config.timezone, deps.now())} 에 갈게.` : "";
       await command.reply(`${praiseMessage()} (오늘 ${config.stats[today]}번째)${suffix}`);
       return;
     }
@@ -107,12 +107,12 @@ export async function handleCommand(command: IncomingCommand, deps: CommandDeps)
     case "snooze": {
       const minutes = args[0] === undefined ? 15 : parsePositiveInt(args[0]);
       if (minutes === null || minutes > MAX_INTERVAL) {
-        await command.reply(`1~${MAX_INTERVAL} 사이의 분을 적어주세요. 예: /snooze 10`);
+        await command.reply(`1~${MAX_INTERVAL} 사이의 분을 말해줘. 예: /snooze 10`);
         return;
       }
       config.pausedUntil = deps.now().getTime() + minutes * MINUTE;
       save();
-      await command.reply(`${minutes}분 뒤에 다시 부르러 올게요. 😴`);
+      await command.reply(`알겠어. ${minutes}분 뒤에 다시 올게. 그때까진 조용히 있을게. 😴`);
       return;
     }
 
@@ -121,18 +121,18 @@ export async function handleCommand(command: IncomingCommand, deps: CommandDeps)
         config.pausedUntil = null;
         config.enabled = false;
         save();
-        await command.reply("무기한 일시정지했습니다. /resume 으로 다시 켜주세요.");
+        await command.reply("알겠어. 네가 부를 때까지 쉬고 있을게. /resume 이라고 하면 다시 갈게.");
         return;
       }
       const minutes = parsePositiveInt(args[0]);
       if (minutes === null) {
-        await command.reply("숫자(분)를 적어주세요. 예: /pause 90");
+        await command.reply("몇 분이나 쉴지 숫자로 말해줘. 예: /pause 90");
         return;
       }
       config.pausedUntil = deps.now().getTime() + minutes * MINUTE;
       config.enabled = true;
       save();
-      await command.reply(`${formatDuration(minutes * MINUTE)} 동안 조용히 있을게요.`);
+      await command.reply(`${formatDuration(minutes * MINUTE)} 동안 조용히 있을게.`);
       return;
     }
 
@@ -144,8 +144,8 @@ export async function handleCommand(command: IncomingCommand, deps: CommandDeps)
       const next = nextReminderAt(config, deps.now());
       await command.reply(
         next
-          ? `다시 시작합니다. 다음 알림: ${formatWhen(next, config.timezone, deps.now())} 🧚`
-          : "다시 시작합니다. 🧚",
+          ? `다시 갈게. ${formatWhen(next, config.timezone, deps.now())} 에 찾아갈 거야. 🧚`
+          : "다시 갈게. 🧚",
       );
       return;
     }
@@ -153,49 +153,50 @@ export async function handleCommand(command: IncomingCommand, deps: CommandDeps)
     case "interval": {
       const minutes = args[0] === undefined ? null : parsePositiveInt(args[0]);
       if (minutes === null || minutes < MIN_INTERVAL || minutes > MAX_INTERVAL) {
-        await command.reply(`${MIN_INTERVAL}~${MAX_INTERVAL} 분 사이로 적어주세요. 예: /interval 30`);
+        await command.reply(`${MIN_INTERVAL}~${MAX_INTERVAL} 분 사이로 말해줘. 예: /interval 30`);
         return;
       }
       config.intervalMinutes = minutes;
       save();
-      await command.reply(`이제 ${minutes}분마다 부르러 올게요.\n\n${describeStatus(config, deps.now())}`);
+      await command.reply(`이제 ${minutes}분마다 갈게.\n\n${describeStatus(config, deps.now())}`);
       return;
     }
 
     case "hours": {
       const range = parseRange(args.join(""));
       if (!range) {
-        await command.reply("HH:MM-HH:MM 형식으로 적어주세요. 예: /hours 09:00-18:00");
+        await command.reply("HH:MM-HH:MM 이렇게 말해줘. 예: /hours 09:00-18:00");
         return;
       }
       config.startMinutes = range.start;
       config.endMinutes = range.end;
       save();
-      await command.reply(`활동 시간대를 바꿨습니다.\n\n${describeStatus(config, deps.now())}`);
+      await command.reply(`언제 갈지 바꿨어.\n\n${describeStatus(config, deps.now())}`);
       return;
     }
 
     case "days": {
       const days = parseDays(args.join(" "));
       if (!days) {
-        await command.reply("예: /days 평일, /days 매일, /days 주말, /days 월화수목금토");
+        await command.reply("이렇게 말해줘. 예: /days 평일, /days 매일, /days 주말, /days 월화수목금토");
         return;
       }
       config.days = days;
       save();
-      await command.reply(`알림 요일을 바꿨습니다.\n\n${describeStatus(config, deps.now())}`);
+      await command.reply(`어느 요일에 갈지 바꿨어.\n\n${describeStatus(config, deps.now())}`);
       return;
     }
 
     case "tz": {
       const timezone = args[0];
       if (!timezone || !isValidTimezone(timezone)) {
-        await command.reply("올바른 타임존을 적어주세요. 예: /tz Asia/Seoul");
+        await command.reply("그런 시간대는 나도 모르겠어. 예: /tz Asia/Seoul");
         return;
       }
       config.timezone = timezone;
       save();
-      await command.reply(`기준 시간대를 ${timezone} 로 바꿨습니다.\n\n${describeStatus(config, deps.now())}`);
+      // 조사를 붙이지 않는다. 타임존 이름의 끝소리에 따라 을/를이 갈리는데 미리 알 수 없다.
+      await command.reply(`이제 ${timezone} 기준으로 셀게.\n\n${describeStatus(config, deps.now())}`);
       return;
     }
 
@@ -208,7 +209,7 @@ export async function handleCommand(command: IncomingCommand, deps: CommandDeps)
       return;
 
     default:
-      await command.reply(`모르는 명령이에요: /${name}\n\n${HELP}`);
+      await command.reply(`그건 무슨 말인지 모르겠어: /${name}\n\n${HELP}`);
   }
 }
 
@@ -216,25 +217,25 @@ function describeStatus(config: Config, now: Date): string {
   const lines: string[] = [];
   const channels = boundChannels(config);
 
-  lines.push(`상태: ${statusLabel(config, now)}`);
-  lines.push(`간격: ${config.intervalMinutes}분`);
+  lines.push(`지금: ${statusLabel(config, now)}`);
+  lines.push(`얼마마다: ${config.intervalMinutes}분`);
   lines.push(
-    `시간대: ${formatDays(config.days)} ${formatClock(config.startMinutes)}~${formatClock(config.endMinutes)} (${config.timezone})`,
+    `언제: ${formatDays(config.days)} ${formatClock(config.startMinutes)}~${formatClock(config.endMinutes)} (${config.timezone})`,
   );
-  lines.push(`연결된 채널: ${channels.length > 0 ? channels.map(channelLabel).join(", ") : "없음"}`);
+  lines.push(`어디로: ${channels.length > 0 ? channels.map(channelLabel).join(", ") : "아직 없어"}`);
 
   const next = nextReminderAt(config, now);
-  lines.push(`다음 알림: ${next ? formatWhen(next, config.timezone, now) : "예정 없음"}`);
+  lines.push(`다음에 갈 시각: ${next ? formatWhen(next, config.timezone, now) : "당분간 안 가"}`);
 
   return lines.join("\n");
 }
 
 function statusLabel(config: Config, now: Date): string {
-  if (!config.enabled) return "꺼짐 (/start 로 켜기)";
+  if (!config.enabled) return "쉬는 중 (/start 로 불러줘)";
   if (config.pausedUntil !== null && config.pausedUntil > now.getTime()) {
-    return `일시정지 (${formatDuration(config.pausedUntil - now.getTime())} 남음)`;
+    return `잠깐 미뤄둔 상태 (${formatDuration(config.pausedUntil - now.getTime())} 남음)`;
   }
-  return "동작 중 🧚";
+  return "네 옆에서 지켜보는 중 🧚";
 }
 
 function channelLabel(id: ChannelId): string {
@@ -256,7 +257,7 @@ function describeStats(config: Config, now: Date): string {
   }
 
   return [
-    "📊 허리 편 기록",
+    "📊 네가 허리 편 기록",
     "",
     `오늘: ${todayCount}번`,
     `최근 7일: ${weekTotal}번 (하루 평균 ${(weekTotal / 7).toFixed(1)}번)`,
