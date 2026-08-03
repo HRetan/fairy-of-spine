@@ -10,9 +10,9 @@
   "scripts": {
     "start": "node src/index.ts",
     "typecheck": "tsc --noEmit",
-    "service:install": "bash scripts/install.sh",
-    "service:uninstall": "bash scripts/uninstall.sh",
-    "service:logs": "tail -f \"$HOME/.fairy-of-spine/logs/fairy.log\""
+    "service:install": "node scripts/service.mjs install",
+    "service:uninstall": "node scripts/service.mjs uninstall",
+    "service:logs": "node scripts/service.mjs logs"
   },
   "devDependencies": {
     "@types/node": "^24.3.0",

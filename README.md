@@ -1,135 +1,202 @@
 # fairy-of-spine 🧚
 
-허리 펴라고 주기적으로 잔소리하는 알림 봇. **텔레그램**과 **디스코드**를 동시에 지원하고,
-macOS에서 `launchd` 상주 프로세스로 돌아간다.
+안녕. 나는 척추의 요정이야.
 
-- 잔소리 문구 **30종** + 아스키 아트 **15종**을 랜덤으로 돌린다 (4번 중 1번쯤 아트가 딸려 온다)
-- 알림 간격 / 활동 시간대 / 요일 / 타임존을 **채팅 명령으로 바로 수정**
-- 알림에 붙는 버튼으로 `✅ 폈어요` / `😴 15분 뒤`
-- 허리 편 횟수를 날짜별로 기록 (`/stats`)
-- 런타임 의존성 0개 — Node 24+ 의 네이티브 TypeScript 실행을 쓰므로 빌드 단계가 없다
+너는 지금도 굽어 있겠지. 괜찮아, 혼내려는 건 아니야.
+다만 내가 주기적으로 찾아가서 등을 펴놓고 갈게. **텔레그램**과 **디스코드** 어디로든 갈 수 있어.
+**macOS**에서는 `launchd`로, **윈도우**에서는 작업 스케줄러로 조용히 상주하면서
+네가 부르지 않아도 알아서 나타날 거야. ✨
 
-## 준비물
+- 🎭 잔소리 문구 **30종** + 아스키 아트 **15종**을 돌려가며 써. 같은 말만 하면 사흘이면 무시하잖아 (4번 중 1번쯤 그림이 딸려 가)
+- ⏱️ 알림 간격 / 활동 시간대 / 요일 / 타임존을 **채팅에서 바로** 바꿀 수 있어
+- 🔘 알림에 `✅ 폈어요` `😴 15분 뒤` 버튼을 붙여줄게. 손가락 한 번이면 돼
+- 📊 네가 허리 편 횟수를 날짜별로 세어둘게 (`/stats`)
+- 🪶 런타임 의존성은 하나도 없어. Node 24+ 가 TypeScript를 직접 읽으니 빌드도 필요 없어
 
-- Node.js 24 이상 (`node -v`)
-- 텔레그램 봇 토큰, 디스코드 봇 토큰 중 **최소 하나**
+## 🧺 준비물
 
-### 텔레그램 봇 만들기
+- Node.js 24 이상 (`node -v` 로 확인해줘)
+- 텔레그램 봇 토큰, 디스코드 봇 토큰 중 **최소 하나**. 둘 다 줘도 좋아
 
-1. 텔레그램에서 [@BotFather](https://t.me/BotFather) 에게 `/newbot`
-2. 이름과 username 을 정하면 토큰이 나온다 → `TELEGRAM_BOT_TOKEN`
+### 📮 텔레그램에서 나를 부르려면
 
-### 디스코드 봇 만들기
+1. 텔레그램에서 [@BotFather](https://t.me/BotFather) 에게 `/newbot` 이라고 말해줘
+2. 이름과 username 을 정하면 토큰을 줄 거야 → `TELEGRAM_BOT_TOKEN` 에 넣어줘
+
+이게 전부야. **토큰 하나면 충분해.** 나머지는 안 채워도 돼. 🙂
+
+### 🎮 디스코드에서 나를 부르려면
 
 1. [개발자 포털](https://discord.com/developers/applications) → New Application
 2. **Bot** 탭 → Reset Token → 토큰 복사 → `DISCORD_BOT_TOKEN`
-3. **OAuth2 → URL Generator** 에서 `bot` 스코프 + `Send Messages` 권한을 골라 나온 링크로 서버에 초대
-4. 서버 채널에서 명령을 쓰고 싶다면 Bot 탭의 **MESSAGE CONTENT INTENT** 를 켜고
-   `.env` 에 `DISCORD_MESSAGE_CONTENT_INTENT=true` 를 넣는다.
-   봇과의 **DM으로만 쓸 거라면 필요 없다** (DM은 인텐트 없이도 본문이 전달된다).
+3. **OAuth2 → URL Generator** 에서 `bot` 스코프와 `Send Messages` 권한을 고르고,
+   나온 링크로 나를 서버에 초대해줘
+4. 서버 채널에서 명령까지 쓰고 싶다면 Bot 탭의 **MESSAGE CONTENT INTENT** 를 켜고
+   `.env` 에 `DISCORD_MESSAGE_CONTENT_INTENT=true` 를 넣어줘.
+   나와 **DM으로만 이야기할 거라면 안 켜도 돼** — DM은 그 설정 없이도 네 말이 들리거든
 
-> 명령 없이 알림만 받으면 충분하다면 봇 대신 채널 웹훅 URL(`DISCORD_WEBHOOK_URL`)만 넣어도 된다.
+> 💌 명령은 필요 없고 알림만 받고 싶다면, 봇 대신 채널 웹훅 URL(`DISCORD_WEBHOOK_URL`)만 줘도 돼.
+> 대신 그때 나는 말을 할 수만 있고 들을 수는 없어.
 
-## 설치
+## 🚀 데려오기
 
 ```bash
 git clone <이 저장소>
 cd fairy-of-spine
-npm install          # 타입체크용 devDependency 만 설치된다
-cp .env.example .env # 토큰 채우기
-npm start            # 우선 포그라운드로 동작 확인
+npm install          # 타입체크용 devDependency 만 설치돼
+cp .env.example .env # 토큰을 넣어줘
+npm start            # 우선 눈앞에서 잘 도는지 봐줘
 ```
 
-봇에게 `/start` (디스코드는 `!start`) 를 보내면 그 대화가 알림 대상으로 묶인다.
+그리고 나에게 `/start` (디스코드에서는 `!start`) 라고 말해줘.
+그 대화가 내가 찾아갈 곳이 될 거야. 📍
 
-### 백그라운드 상주로 등록 (macOS)
+### 🌙 백그라운드에 재워두기
+
+명령은 macOS 든 윈도우든 똑같아. 알아서 네 OS 에 맞는 방식으로 자리를 잡을게.
 
 ```bash
-npm run service:install    # ~/Library/LaunchAgents 에 등록 + 즉시 기동
-npm run service:logs       # 로그 실시간 보기
-npm run service:uninstall  # 해제 (설정과 기록은 남는다)
+npm run service:install    # 등록하고 바로 깨워
+npm run service:logs       # 내가 뭘 하고 있는지 실시간으로 봐
+npm run service:uninstall  # 보내주기 (설정과 기록은 남겨둘게)
 ```
 
-로그인할 때 자동으로 뜨고, 프로세스가 죽으면 launchd 가 다시 살린다.
-명령을 받으려면 봇이 계속 연결돼 있어야 하므로 cron 방식이 아니라 상주 데몬으로 띄운다.
+네가 로그인하면 나도 같이 깨어나고, 혹시 내가 쓰러져도 다시 일어날 거야.
+네 말을 들으려면 계속 연결돼 있어야 해서, cron 처럼 잠깐 나타났다 사라지지 않고 상주하는 거야. 🛏️
 
-## 명령어
+<details>
+<summary>🍎 <b>macOS 에서 벌어지는 일</b></summary>
 
-텔레그램은 `/`, 디스코드는 `!` 또는 `/` 둘 다 된다.
+`~/Library/LaunchAgents/net.nextlevelstudio.fairy-of-spine.plist` 에 LaunchAgent 로 등록돼.
+`RunAtLoad` + `KeepAlive` 라서 로그인할 때 뜨고, 죽으면 launchd 가 즉시 되살려. 로그는 `tail -f` 로 봐.
 
-| 명령 | 설명 |
+```bash
+launchctl list | grep fairy                                  # 살아 있나 확인
+launchctl kickstart -k gui/$(id -u)/net.nextlevelstudio.fairy-of-spine   # 다시 깨우기
+```
+</details>
+
+<details>
+<summary>🪟 <b>윈도우에서 벌어지는 일</b></summary>
+
+작업 스케줄러에 `fairy-of-spine` 이라는 이름으로 등록돼. **관리자 권한은 필요 없어.**
+
+윈도우에는 launchd 의 `KeepAlive` 에 해당하는 게 없어서, 이렇게 흉내 냈어:
+
+- **로그온 시 시작** 트리거로 네가 로그인하면 깨어나고
+- **5분마다 반복** 트리거 + **중복 실행 무시(IgnoreNew)** 설정으로,
+  이미 돌고 있으면 새 인스턴스가 무시되고 죽어 있으면 다음 5분 안에 되살아나
+
+콘솔 창이 뜨지 않도록 `%USERPROFILE%\.fairy-of-spine\` 에 `fairy.cmd`(실행 + 로그 리다이렉션)와
+`fairy.vbs`(숨김 실행)를 만들어 두고, 스케줄러는 `wscript.exe fairy.vbs` 를 부르게 해뒀어.
+
+```powershell
+Get-ScheduledTask -TaskName fairy-of-spine          # 살아 있나 확인
+Start-ScheduledTask -TaskName fairy-of-spine        # 다시 깨우기
+Get-Content "$env:USERPROFILE\.fairy-of-spine\logs\fairy.log" -Tail 50 -Wait   # 로그
+```
+
+`.ps1` 을 직접 실행하면 실행 정책에 막힐 수 있어. `npm run service:install` 은 `-ExecutionPolicy Bypass`
+로 부르니까 그냥 npm 스크립트를 쓰는 게 편해. 직접 부르고 싶다면:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\install.ps1
+```
+</details>
+
+> 🐧 리눅스에는 등록 스크립트를 따로 두지 않았어. `npm start` 로 바로 돌리거나,
+> `systemd --user` 서비스로 `node src/index.ts` 를 띄워주면 돼.
+
+## 💬 나에게 할 수 있는 말
+
+텔레그램은 `/`, 디스코드는 `!` 와 `/` 둘 다 알아들어.
+
+| 명령 | 내가 하는 일 |
 | --- | --- |
-| `/start` | 이 대화를 알림 대상으로 연결 |
-| `/stop` | 알림 전체 끄기 |
-| `/status` | 현재 설정과 다음 알림 시각 |
-| `/done` | 허리 폈다고 보고 (타이머 리셋 + 기록) |
-| `/snooze [분]` | 잠깐 미루기 (기본 15분) |
-| `/pause [분]` | 일시정지. 분을 안 쓰면 무기한 |
-| `/resume` | 일시정지 해제 |
-| `/interval <분>` | 알림 간격 (예: `/interval 25`) |
-| `/hours <HH:MM-HH:MM>` | 활동 시간대 (예: `/hours 09:00-18:00`) |
-| `/days <...>` | `매일` `평일` `주말` `월수금` `mon,wed,fri` 모두 인식 |
-| `/tz <타임존>` | 기준 시간대 (예: `/tz Asia/Seoul`) |
-| `/stats` | 최근 7일 기록 |
-| `/test` | 지금 바로 알림 한 번 |
+| `/start` | 이 대화로 찾아갈게 |
+| `/stop` | 조용히 있을게 |
+| `/status` | 지금 설정과 다음에 갈 시각을 알려줄게 |
+| `/done` | 폈다고 알려줘. 칭찬하고 타이머를 다시 잴게 |
+| `/snooze [분]` | 잠깐 미뤄줄게 (기본 15분) |
+| `/pause [분]` | 쉬어갈게. 분을 안 쓰면 부를 때까지 |
+| `/resume` | 다시 찾아갈게 |
+| `/interval <분>` | 얼마마다 갈지 정해줘 (예: `/interval 25`) |
+| `/hours <HH:MM-HH:MM>` | 언제부터 언제까지 갈지 (예: `/hours 09:00-18:00`) |
+| `/days <...>` | `매일` `평일` `주말` `월수금` `mon,wed,fri` 다 알아들어 |
+| `/tz <타임존>` | 어느 시간대를 기준으로 할지 (예: `/tz Asia/Seoul`) |
+| `/stats` | 최근 7일 동안 네가 몇 번 폈는지 |
+| `/test` | 지금 당장 한 번 가볼게 |
+| `/help` | 이 표를 그대로 읊어줄게 |
 
-`22:00-02:00` 처럼 자정을 넘는 시간대도 된다. 이 경우 요일은 **시작하는 날** 기준으로 판단한다.
+`22:00-02:00` 처럼 자정을 넘겨도 괜찮아. 그럴 땐 **시작하는 날**을 기준으로 요일을 세.
+그러니까 금요일 밤 `22:00` 에 시작한 시간대는 토요일 새벽 `02:00` 까지 이어져. 🌜
 
-## 환경변수
+## 🔑 환경변수
 
 | 이름 | 필수 | 설명 |
 | --- | --- | --- |
-| `TELEGRAM_BOT_TOKEN` | △ | 있으면 텔레그램 채널이 켜진다 |
-| `TELEGRAM_CHAT_ID` | | 알림 대상 chat id 고정. 비우면 `/start` 로 자동 등록 |
-| `DISCORD_BOT_TOKEN` | △ | 있으면 디스코드 채널이 켜진다 (명령 수신 가능) |
-| `DISCORD_CHANNEL_ID` | | 알림 대상 channel id 고정 |
-| `DISCORD_MESSAGE_CONTENT_INTENT` | | 서버 채널에서 명령을 읽으려면 `true` (기본 `false`) |
-| `DISCORD_WEBHOOK_URL` | | 봇 토큰이 없을 때만 사용. 발송 전용 |
-| `FAIRY_HOME` | | 설정·로그 위치. 기본 `~/.fairy-of-spine` |
+| `TELEGRAM_BOT_TOKEN` | △ | 이게 있으면 텔레그램으로 갈 수 있어 |
+| `TELEGRAM_CHAT_ID` | | 갈 곳을 미리 정해두고 싶을 때. 비워두면 `/start` 한 곳으로 갈게 |
+| `DISCORD_BOT_TOKEN` | △ | 이게 있으면 디스코드로 갈 수 있어 (네 말도 들려) |
+| `DISCORD_CHANNEL_ID` | | 갈 채널을 미리 정해두고 싶을 때 |
+| `DISCORD_MESSAGE_CONTENT_INTENT` | | 서버 채널에서 네 말을 들으려면 `true` (기본 `false`) |
+| `DISCORD_WEBHOOK_URL` | | 봇 토큰이 없을 때만 써. 말만 하고 듣진 못해 |
+| `FAIRY_HOME` | | 내 짐을 둘 곳. 기본은 `~/.fairy-of-spine` |
 
-△ = 둘 중 최소 하나. 둘 다 넣으면 **양쪽 모두로** 알림이 간다.
+△ = 이 둘 중 최소 하나는 있어야 해. 둘 다 주면 **양쪽 모두로** 찾아갈게. 🧚🧚
 
-환경변수로 대상 ID를 지정하면 저장된 값보다 우선한다. 토큰을 바꾸고 싶으면 `.env` 만 고치고
-`npm run service:install` 을 다시 돌리면 된다 (재등록 + 재기동).
+갈 곳을 환경변수로 정해두면 저장해둔 값보다 그게 우선이야.
+토큰을 바꾸고 싶으면 `.env` 만 고치고 `npm run service:install` 을 다시 돌려줘 (재등록하고 다시 깨어날게).
 
-## 문구 추가하기
+## ✍️ 내 대사 늘려주기
 
-전부 `src/messages.ts` 한 곳에 모여 있다.
+내가 할 말은 전부 `src/messages.ts` 한 곳에 모여 있어.
 
-- **문구**: `REMINDERS` 배열에 문자열을 추가하면 끝. 개수 제한 없다.
-  본문에는 마크업을 쓰지 말 것 — 텔레그램과 디스코드에서 똑같이 보여야 한다.
-- **아스키 아트**: `ARTS` 배열에 `block(String.raw\`...\`)` 로 추가한다.
-  - 역슬래시가 들어가므로 반드시 `String.raw`
-  - 소스에서 **들여쓰기 없이 0열부터** 그린다. 앞뒤 빈 줄만 `block()` 이 걷어낸다
-  - **아트 안에 한글을 넣지 않는다.** 한글은 폭이 두 배라 틀이 어긋난다. 설명은 본문에 쓴다
-- 아트가 붙을 확률은 `ART_CHANCE` (기본 0.25)
+- **문구**: `REMINDERS` 배열에 문자열만 더해주면 돼. 개수 제한은 없어.
+  다만 본문에는 마크업을 쓰지 말아줘 — 텔레그램과 디스코드에서 똑같이 보여야 하거든
+- **아스키 아트**: `ARTS` 배열에 `` block(String.raw`...`) `` 형태로 더해줘
+  - 역슬래시가 들어가니까 꼭 `String.raw` 로 감싸줘. 안 그러면 그림이 다 깨져
+  - 소스에서 **들여쓰기 없이 0열부터** 그려줘. 앞뒤 빈 줄만 `block()` 이 정리해줄게
+  - **그림 안에 한글은 넣지 말아줘.** 한글은 폭이 두 배라 틀이 어긋나. 설명은 본문에 써주면 돼
+- 그림이 딸려 갈 확률은 `ART_CHANCE` (기본 0.25). 더 자주 보고 싶으면 올려줘
 
-아트는 채널이 알아서 고정폭으로 감싼다 — 텔레그램은 `<pre>` (HTML 모드 + 이스케이프),
-디스코드는 코드펜스. 아트가 없는 메시지는 이스케이프 사고를 피하려고 평문 그대로 나간다.
+그림은 채널이 알아서 고정폭으로 감싸줄 거야 — 텔레그램은 `<pre>` (HTML 모드로 올리고 이스케이프),
+디스코드는 코드펜스. 그림이 없는 말은 이스케이프 사고를 피하려고 평문 그대로 갈게.
 
-`/test` 로 지금 바로 한 건 뽑아볼 수 있다.
+새로 쓴 대사는 `/test` 로 바로 들어볼 수 있어. 🎤
 
-## 상태 파일
+## 📦 내 짐
 
-설정과 기록은 저장소가 아니라 `~/.fairy-of-spine/config.json` 에 쌓인다.
-`/interval` 같은 명령으로 바꾼 값이 여기 저장되고, 재시작해도 유지된다.
-통계는 최근 90일치만 남기고 자동으로 정리한다.
+설정과 기록은 저장소가 아니라 `~/.fairy-of-spine/config.json` 에 둘게.
+`/interval` 처럼 네가 바꾼 값이 여기 적히고, 내가 다시 깨어나도 기억하고 있어.
+기록은 최근 90일치만 남기고 오래된 건 정리할게. 🧹
 
-## 구조
+## 🗂️ 내가 만들어진 방식
 
 ```
 src/
-  index.ts            상주 루프. 20초마다 "보낼 때가 됐나" 확인
-  schedule.ts         타임존·활동시간대·다음 알림 시각 계산 (순수 함수)
-  commands.ts         채널 공통 명령 처리
+  index.ts            상주 루프. 20초마다 "갈 때가 됐나" 확인
+  schedule.ts         타임존·활동시간대·다음에 갈 시각 계산 (순수 함수)
+  commands.ts         채널과 상관없는 명령 처리
   config.ts           ~/.fairy-of-spine/config.json 읽기/쓰기
-  messages.ts         잔소리 문구 모음
+  messages.ts         내 대사와 그림 모음
   channels/
     types.ts          Channel 인터페이스
-    index.ts          환경변수를 보고 쓸 수 있는 채널만 생성
+    index.ts          환경변수를 보고 갈 수 있는 곳만 준비
     telegram.ts       Bot API 롱폴링 + 인라인 키보드
     discord.ts        게이트웨이 WebSocket + REST, 웹훅 전용 모드
+scripts/
+  service.mjs         npm run service:* 를 OS 에 맞는 스크립트로 분배
+  install.sh          macOS  - launchd 등록
+  install.ps1         윈도우 - 작업 스케줄러 등록
 ```
 
-채널을 추가하려면 `Channel` 인터페이스를 구현하고 `channels/index.ts` 에 등록하면 된다.
-스케줄링과 명령 처리는 채널을 모른다.
+앱 자체는 어느 OS 든 똑같이 돌아. Node 만 쓰고 경로도 `path.join` / `os.homedir()` 라서
+OS 를 타는 건 상주 등록 부분뿐이야.
+
+내가 갈 곳을 늘리고 싶다면 `Channel` 인터페이스를 구현하고 `channels/index.ts` 에 등록해줘.
+언제 갈지 정하는 부분과 네 말을 알아듣는 부분은 채널을 몰라도 되게 해뒀어.
+
+---
+
+그럼 이만. 등 펴고 있어. ✨
