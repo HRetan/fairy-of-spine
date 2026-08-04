@@ -1,4 +1,4 @@
-import { closeSync, openSync, readSync, statSync, writeFileSync } from "node:fs";
+import { closeSync, mkdirSync, openSync, readSync, statSync, writeFileSync, writeSync } from "node:fs";
 import { join } from "node:path";
 
 import { logDir } from "./env.ts";
@@ -30,6 +30,48 @@ export function trimLogs(): void {
       console.error(`[logs] ${name} 정리 실패:`, error instanceof Error ? error.message : error);
     }
   }
+}
+
+/**
+ * 화면에 찍는 것을 파일에도 남긴다.
+ *
+ * launchd 나 fairy.cmd 로 띄우면 그쪽이 리다이렉션으로 이미 같은 파일에 쓰고 있다.
+ * 그때만 손을 떼야 두 번 쓰지 않는다. 그쪽에서 FAIRY_LOG_REDIRECTED=1 을 넣어준다.
+ *
+ * TTY 여부로 판단하면 안 된다. .app 번들이나 숨김 실행(vbs)은 콘솔이 없어 TTY 가 아닌데,
+ * 아무도 파일로 옮겨주지 않아 기록이 통째로 사라진다.
+ */
+export function startFileLogging(): void {
+  if (process.env["FAIRY_LOG_REDIRECTED"] === "1") return;
+
+  try {
+    mkdirSync(logDir(), { recursive: true });
+    tee(process.stdout, openSync(join(logDir(), "fairy.log"), "a"));
+    tee(process.stderr, openSync(join(logDir(), "fairy.error.log"), "a"));
+  } catch (error) {
+    console.error("[logs] 파일에 기록하지 못한다:", error instanceof Error ? error.message : error);
+  }
+}
+
+function tee(stream: NodeJS.WriteStream, fd: number): void {
+  const original = stream.write.bind(stream);
+
+  stream.write = ((chunk: unknown, ...rest: unknown[]): boolean => {
+    try {
+      const text = typeof chunk === "string" ? chunk : String(chunk);
+      // 시각이 없으면 나중에 로그를 봐도 언제 있었던 일인지 알 수 없다.
+      writeSync(fd, text.trim() ? `${stamp()} ${text}` : text);
+    } catch {
+      // 파일에 못 써도 화면 출력은 이어져야 한다.
+    }
+    return (original as (...args: unknown[]) => boolean)(chunk, ...rest);
+  }) as typeof stream.write;
+}
+
+function stamp(): string {
+  const now = new Date();
+  const pad = (n: number): string => String(n).padStart(2, "0");
+  return `[${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}]`;
 }
 
 function trimOne(path: string): void {

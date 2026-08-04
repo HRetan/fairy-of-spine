@@ -3,8 +3,8 @@ import type { Action, Channel, CommandHandler, OutgoingMessage } from "./types.t
 
 const API_BASE = "https://discord.com/api/v10";
 const GATEWAY_URL = "wss://gateway.discord.gg/?v=10&encoding=json";
-/** REST 요청이 매달릴 수 있는 최대 시간. */
-const REQUEST_TIMEOUT_MS = 15_000;
+/** REST 요청이 매달릴 수 있는 최대 시간. 텔레그램 쪽과 같은 이유로 넉넉히 잡는다. */
+const REQUEST_TIMEOUT_MS = 40_000;
 
 // 게이트웨이 인텐트 비트.
 const INTENT_GUILDS = 1 << 0;

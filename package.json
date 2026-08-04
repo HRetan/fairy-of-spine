@@ -12,10 +12,14 @@
     "typecheck": "tsc --noEmit",
     "service:install": "node scripts/service.mjs install",
     "service:uninstall": "node scripts/service.mjs uninstall",
-    "service:logs": "node scripts/service.mjs logs"
+    "service:logs": "node scripts/service.mjs logs",
+    "build:exe": "node scripts/build-exe.mjs",
+    "build:exe:all": "node scripts/build-exe.mjs mac win"
   },
   "devDependencies": {
     "@types/node": "^24.3.0",
+    "esbuild": "^0.28.1",
+    "postject": "^1.0.0-alpha.6",
     "typescript": "^5.9.2"
   }
 }

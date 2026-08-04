@@ -3,8 +3,14 @@ import type { Action, Channel, CommandHandler, OutgoingMessage } from "./types.t
 
 const API_BASE = "https://api.telegram.org";
 const LONG_POLL_SECONDS = 25;
-/** 롱폴링이 아닌 요청이 매달릴 수 있는 최대 시간. */
-const REQUEST_TIMEOUT_MS = 15_000;
+/**
+ * 롱폴링이 아닌 요청이 매달릴 수 있는 최대 시간.
+ *
+ * 롱폴링(25초)보다 넉넉히 길어야 한다. 짧게 잡았더니 발송이 심심찮게 잘려나갔고
+ * (실측 6번 중 2번), 그때마다 알림이 통째로 사라졌다. 간격은 어차피 분 단위라
+ * 넉넉히 두어도 잃을 게 없다. 매달린 요청은 발송 빗장이 풀리는 것만 늦출 뿐이다.
+ */
+const REQUEST_TIMEOUT_MS = 40_000;
 
 type TelegramUpdate = {
   update_id: number;
@@ -38,6 +44,8 @@ export class TelegramChannel implements Channel {
   #running = false;
   /** 롱폴링 전용 취소 컨트롤러. 종료할 때 25초를 기다리지 않기 위한 것. */
   #pollAbort: AbortController | null = null;
+  /** getMe 로 한 번만 알아내고 재사용한다. undefined = 아직 안 물어봄. */
+  #inviteUrl: string | null | undefined = undefined;
 
   constructor(options: TelegramOptions) {
     this.#token = options.token;
@@ -78,6 +86,22 @@ export class TelegramChannel implements Channel {
           }
         : {}),
     });
+  }
+
+  /**
+   * 봇을 여는 t.me 링크. 누르면 텔레그램이 열리고 /start 가 채워진다.
+   * 대화를 묶으려면 /start 를 한 번 보내야 하는데, 설정 화면에서는 그걸 대신 해줄 수 없다.
+   * 링크 한 번으로 끝나게 해주려고 봇 username 을 물어본다.
+   */
+  async inviteUrl(): Promise<string | null> {
+    if (this.#inviteUrl !== undefined) return this.#inviteUrl;
+    try {
+      const me = await this.#call<{ username?: string }>("getMe", {});
+      this.#inviteUrl = me.username ? `https://t.me/${me.username}?start=fairy` : null;
+    } catch {
+      this.#inviteUrl = null; // 토큰이 틀렸거나 네트워크가 안 되면 링크는 포기한다
+    }
+    return this.#inviteUrl;
   }
 
   async #pollLoop(handler: CommandHandler): Promise<void> {

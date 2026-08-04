@@ -40,6 +40,9 @@
     <string>__PATH__</string>
     <key>NODE_NO_WARNINGS</key>
     <string>1</string>
+    <!-- 아래에서 stdout 을 파일로 보내고 있으니 앱은 파일에 또 쓰지 말라는 표시 -->
+    <key>FAIRY_LOG_REDIRECTED</key>
+    <string>1</string>
   </dict>
 </dict>
 </plist>

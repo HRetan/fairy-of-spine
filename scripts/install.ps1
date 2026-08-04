@@ -36,6 +36,8 @@ New-Item -ItemType Directory -Force -Path $LogDir, $DataDir | Out-Null
 $cmdPath = Join-Path $DataDir "fairy.cmd"
 @"
 @echo off
+rem 아래에서 출력을 파일로 보내니 앱은 파일에 또 쓰지 않는다.
+set FAIRY_LOG_REDIRECTED=1
 cd /d "$RepoDir"
 "$node" "$RepoDir\src\index.ts" >> "$LogFile" 2>&1
 "@ | Set-Content -Path $cmdPath -Encoding OEM

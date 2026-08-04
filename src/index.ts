@@ -1,11 +1,14 @@
 import { createChannels } from "./channels/index.ts";
+import { TelegramChannel } from "./channels/telegram.ts";
 import type { Action, Channel, ChannelId } from "./channels/types.ts";
 import { handleCommand } from "./commands.ts";
 import { boundChannels, CONFIG_PATH, loadConfig, saveConfig } from "./config.ts";
 import { loadDotEnv, logDir } from "./env.ts";
-import { trimLogs } from "./logs.ts";
+import { startFileLogging, trimLogs } from "./logs.ts";
 import { reminderMessage } from "./messages.ts";
+import { maybeOpenBrowser } from "./open.ts";
 import { formatWhen, isDue, nextReminderAt } from "./schedule.ts";
+import { startWebServer } from "./web.ts";
 
 /** 알림을 보낼 때가 됐는지 확인하는 주기. 분 단위 정확도면 충분하다. */
 const TICK_MS = 20_000;
@@ -24,6 +27,8 @@ const REMINDER_ACTIONS: Action[] = [
 
 loadDotEnv();
 trimLogs();
+// 콘솔에만 찍히고 사라지지 않도록 파일에도 남긴다. (실행파일을 더블클릭한 경우)
+startFileLogging();
 
 const config = loadConfig();
 
@@ -34,13 +39,6 @@ const setups = createChannels({
     saveConfig(config);
   },
 });
-
-if (setups.length === 0) {
-  console.error(
-    "쓸 수 있는 채널이 없습니다. .env 에 TELEGRAM_BOT_TOKEN 또는 DISCORD_BOT_TOKEN(혹은 DISCORD_WEBHOOK_URL)을 넣어주세요.",
-  );
-  process.exit(1);
-}
 
 const channels = new Map<ChannelId, Channel>();
 for (const setup of setups) {
@@ -101,11 +99,37 @@ const deps = {
   now: () => new Date(),
 };
 
+// start() 는 폴링/연결을 걸어두고 곧바로 돌아온다. 기다릴 필요가 없고,
+// 최상위 await 를 두면 CommonJS 로 번들할 수 없어 단일 실행파일을 만들지 못한다.
 for (const setup of setups) {
-  await setup.channel.start((command) => handleCommand(command, deps));
+  void setup.channel.start((command) => handleCommand(command, deps));
 }
 
 let ticks = 0;
+const web = startWebServer({
+  config,
+  availableChannels: () => [...channels.keys()],
+  // 텔레그램만 대화를 링크로 묶을 수 있다. 디스코드는 채널에 직접 !start 를 보내야 한다.
+  telegramInviteUrl: async () => {
+    const telegram = channels.get("telegram");
+    return telegram instanceof TelegramChannel ? await telegram.inviteUrl() : null;
+  },
+  sendReminderNow: sendReminder,
+  // 창 없이 돌 때는 Ctrl+C 를 누를 데가 없다. 설정 화면에서 끌 수 있어야 한다.
+  quit: () => shutdown("설정 화면에서 끄라고 했어."),
+  now: () => new Date(),
+});
+
+// 토큰이 하나도 없어도 설정 화면이 열려 있으면 살아 있는다.
+// 여기서 죽으면 처음 쓰는 사람이 토큰을 넣을 길이 없어진다. 화면을 열려면 내가 떠 있어야 하니까.
+if (setups.length === 0 && !web) {
+  console.error(
+    "쓸 수 있는 채널이 없고 설정 화면도 꺼져 있습니다.\n" +
+      ".env 에 TELEGRAM_BOT_TOKEN 또는 DISCORD_BOT_TOKEN(혹은 DISCORD_WEBHOOK_URL)을 넣어주세요.",
+  );
+  process.exit(1);
+}
+
 const tick = setInterval(() => {
   ticks += 1;
   if (ticks % LOG_CHECK_EVERY === 0) trimLogs();
@@ -116,26 +140,37 @@ const tick = setInterval(() => {
 }, TICK_MS);
 
 const enabledLabels = setups.map((setup) => setup.channel.label).join(", ");
-console.log(`🧚 허리 요정 시작: ${enabledLabels}`);
+console.log(
+  enabledLabels ? `🧚 허리 요정 시작: ${enabledLabels}` : "🧚 허리 요정 시작: 아직 갈 곳이 없어",
+);
 console.log(`설정 파일: ${CONFIG_PATH}`);
 console.log(`로그: ${logDir()}`);
 
+// 아직 갈 곳이 없으면 처음 쓰는 것으로 보고 설정 화면을 띄워준다.
+if (web) maybeOpenBrowser(web.url, setups.length === 0);
+
 const next = nextReminderAt(config, new Date());
-console.log(
-  next
-    ? `다음 알림 예정: ${formatWhen(next, config.timezone, new Date())}`
-    : "아직 연결된 대화가 없습니다. 봇에게 /start 를 보내주세요.",
-);
+if (setups.length === 0) {
+  console.log(`토큰이 아직 없어요. 설정 화면에서 넣고 나를 다시 깨워주세요: ${web?.url ?? ""}`);
+} else if (next) {
+  console.log(`다음 알림 예정: ${formatWhen(next, config.timezone, new Date())}`);
+} else {
+  console.log("아직 연결된 대화가 없습니다. 봇에게 /start 를 보내주세요.");
+}
 
 let shuttingDown = false;
+
+function shutdown(reason: string): void {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`${reason} 그럼 이만. ✨`);
+  clearInterval(tick);
+  web?.close();
+  void Promise.all(setups.map((setup) => setup.channel.stop())).finally(() => process.exit(0));
+}
+
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
-  process.on(signal, () => {
-    if (shuttingDown) return;
-    shuttingDown = true;
-    console.log(`\n${signal} 수신, 종료합니다.`);
-    clearInterval(tick);
-    void Promise.all(setups.map((setup) => setup.channel.stop())).finally(() => process.exit(0));
-  });
+  process.on(signal, () => shutdown(`${signal} 받았어.`));
 }
 
 process.on("unhandledRejection", (reason) => {
