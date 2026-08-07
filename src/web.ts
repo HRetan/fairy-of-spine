@@ -16,6 +16,9 @@ import { UI_HTML } from "./ui.ts";
 const DEFAULT_PORT = 7979;
 const HOST = "127.0.0.1";
 
+/** 그 포트에 있는 게 우리인지 남인지 가리는 표식. */
+const APP_MARK = "fairy-of-spine";
+
 export type WebDeps = {
   config: Config;
   /** 지금 켜져 있는 채널. 토큰이 있어 실제로 만들어진 것들. */
@@ -25,6 +28,8 @@ export type WebDeps = {
   telegramInviteUrl: () => Promise<string | null>;
   /** 프로세스를 곱게 종료한다. */
   quit: () => void;
+  /** 이미 같은 앱이 그 주소에서 돌고 있을 때. 보통 화면만 띄우고 조용히 빠진다. */
+  onAlreadyRunning: (url: string) => void;
   now: () => Date;
 };
 
@@ -48,11 +53,11 @@ export function startWebServer(deps: WebDeps): { url: string; close: () => void 
 
   server.on("error", (error) => {
     const message = error instanceof Error ? error.message : String(error);
-    console.error(`[web] 설정 화면을 열지 못했다: ${message}`);
     if (message.includes("EADDRINUSE")) {
-      console.error(`[web] ${port} 번을 누가 이미 쓰고 있어. 내가 이미 떠 있는 건 아닌지 봐줘.`);
-      console.error("[web] 다른 포트를 쓰려면 FAIRY_WEB_PORT 를 정해줘.");
+      void handlePortBusy(url, port, deps);
+      return;
     }
+    console.error(`[web] 설정 화면을 열지 못했다: ${message}`);
   });
 
   // 주소는 실제로 자리를 잡은 뒤에 알린다.
@@ -62,6 +67,33 @@ export function startWebServer(deps: WebDeps): { url: string; close: () => void 
   // 127.0.0.1 에만 묶는다. 바깥에서는 닿을 수 없다.
   server.listen(port, HOST);
   return { url, close: () => server.close() };
+}
+
+/**
+ * 포트가 이미 물려 있을 때.
+ *
+ * 대개는 내가 이미 떠 있는 것이다. 실행파일은 창도 Dock 아이콘도 없어서
+ * 더블클릭해도 아무 일이 없어 보이는데, 그때 기존 화면을 열어주면 기대에 맞는다.
+ * 남이 쓰는 포트일 수도 있으니 표식을 물어보고 가른다.
+ */
+async function handlePortBusy(url: string, port: number, deps: WebDeps): Promise<void> {
+  if (await isOurInstance(url)) {
+    deps.onAlreadyRunning(url);
+    return;
+  }
+  console.error(`[web] ${port} 번을 다른 프로그램이 쓰고 있어서 설정 화면을 열지 못했다.`);
+  console.error("[web] FAIRY_WEB_PORT 로 다른 포트를 정해줘.");
+}
+
+async function isOurInstance(url: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${url}/api/ping`, { signal: AbortSignal.timeout(3_000) });
+    if (!res.ok) return false;
+    const body = (await res.json()) as { app?: string };
+    return body.app === APP_MARK;
+  } catch {
+    return false;
+  }
 }
 
 async function handle(req: IncomingMessage, res: ServerResponse, deps: WebDeps): Promise<void> {
@@ -77,6 +109,12 @@ async function handle(req: IncomingMessage, res: ServerResponse, deps: WebDeps):
   if (req.method === "GET" && url.pathname === "/") {
     res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
     res.end(UI_HTML);
+    return;
+  }
+
+  // 두 번째로 뜬 인스턴스가 "저기 있는 게 나인가"를 물어보는 곳. 가볍게 답한다.
+  if (req.method === "GET" && url.pathname === "/api/ping") {
+    send(res, 200, { app: APP_MARK, pid: process.pid });
     return;
   }
 

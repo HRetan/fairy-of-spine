@@ -99,13 +99,10 @@ const deps = {
   now: () => new Date(),
 };
 
-// start() 는 폴링/연결을 걸어두고 곧바로 돌아온다. 기다릴 필요가 없고,
-// 최상위 await 를 두면 CommonJS 로 번들할 수 없어 단일 실행파일을 만들지 못한다.
-for (const setup of setups) {
-  void setup.channel.start((command) => handleCommand(command, deps));
-}
-
 let ticks = 0;
+
+// 채널보다 먼저 띄운다. 이미 내가 떠 있는 경우를 여기서 알아채고 물러나야,
+// 두 인스턴스가 텔레그램 폴링을 두고 다투지 않는다.
 const web = startWebServer({
   config,
   availableChannels: () => [...channels.keys()],
@@ -117,8 +114,25 @@ const web = startWebServer({
   sendReminderNow: sendReminder,
   // 창 없이 돌 때는 Ctrl+C 를 누를 데가 없다. 설정 화면에서 끌 수 있어야 한다.
   quit: () => shutdown("설정 화면에서 끄라고 했어."),
+  onAlreadyRunning: (url) => {
+    // 실행파일은 창도 Dock 아이콘도 없어서, 더블클릭해도 아무 일이 없어 보인다.
+    // 이미 떠 있는 쪽의 화면을 열어주고 이쪽은 조용히 빠진다.
+    console.log("이미 떠 있어. 그 화면을 열어줄게. ✨");
+    maybeOpenBrowser(url, true);
+    clearInterval(tick);
+    // 포트가 물렸다는 걸 알기 전에 폴링이 이미 시작됐다. 먼저 있던 쪽과 다투지 않게 닫는다.
+    for (const setup of setups) void setup.channel.stop();
+    // 브라우저를 띄울 짬을 주고 나간다.
+    setTimeout(() => process.exit(0), 500);
+  },
   now: () => new Date(),
 });
+
+// start() 는 폴링/연결을 걸어두고 곧바로 돌아온다. 기다릴 필요가 없고,
+// 최상위 await 를 두면 CommonJS 로 번들할 수 없어 단일 실행파일을 만들지 못한다.
+for (const setup of setups) {
+  void setup.channel.start((command) => handleCommand(command, deps));
+}
 
 // 토큰이 하나도 없어도 설정 화면이 열려 있으면 살아 있는다.
 // 여기서 죽으면 처음 쓰는 사람이 토큰을 넣을 길이 없어진다. 화면을 열려면 내가 떠 있어야 하니까.
